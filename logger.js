@@ -1,17 +1,16 @@
-const winston = require("winston");
+const { createLogger, format, transports } = require("winston");
+const { combine, timestamp, label, prettyPrint } = format;
 
-const logger = winston.createLogger({
+const logger = createLogger({
   level: "debug",
-  format: winston.format.json(),
-  // defaultMeta: { service: "bilibili-live-hls" },
+  format: combine(timestamp(), format.json()),
   transports: [
-    new winston.transports.File({ filename: "error.log", level: "error" }),
-    new winston.transports.File({ filename: "combined.log", level: "info" }),
+    new transports.File({ filename: "error.log", level: "error" }),
+    new transports.File({ filename: "combined.log", level: "info" }),
+    new transports.Console({
+      format: combine(timestamp(), format.simple())
+    }),
   ],
 });
-
-logger.add(new winston.transports.Console({
-  format: winston.format.simple(),
-}));
 
 module.exports = logger;

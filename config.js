@@ -1,5 +1,5 @@
 module.exports = {
-  roomId: 5038,
+  roomId: 222272,
   destDir: "/tmp/liveRecords",
   checkInterval: 60 * 1000,
 };
