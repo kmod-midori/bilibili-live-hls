@@ -1,0 +1,17 @@
+{
+  "name": "bilibili-live-hls",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "hls-parser": "^0.6.1",
+    "mkdirp": "^1.0.4",
+    "winston": "^3.3.3"
+  }
+}
