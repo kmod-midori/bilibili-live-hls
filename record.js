@@ -75,7 +75,6 @@ exports.startRecord = async function (roomId) {
     } catch (error) {
       logger.error("Record loop failed", error);
     }
-    // sleep(30 * 1000);
-    return;
+    sleep(5 * 1000);
   } while (await isLive(roomId));
 };

@@ -3,8 +3,6 @@ const { startRecord } = require("./record");
 const logger = require("./logger");
 const config = require("./config");
 
-const CHECK_INTERVAL = 30 * 1000;
-
 async function loop() {
   let live = await isLive(config.roomId);
   if (!live) {
@@ -23,7 +21,7 @@ async function main() {
     } catch (error) {
       logger.error("Check failed", error);
     }
-    setTimeout(fn, CHECK_INTERVAL);
+    setTimeout(fn, config.checkInterval);
   };
   fn();
 }
