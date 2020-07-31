@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop ecosystem.config.js"
   },
   "author": "",
   "license": "ISC",
@@ -12,6 +13,7 @@
     "axios": "^0.19.2",
     "hls-parser": "^0.6.1",
     "mkdirp": "^1.0.4",
+    "pm2": "^4.4.0",
     "winston": "^3.3.3"
   }
 }
