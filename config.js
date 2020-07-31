@@ -1,5 +1,6 @@
-module.exports = {
-  roomId: 222272,
-  destDir: "/tmp/liveRecords",
+const defaultConfig = {
+  destDir: __dirname + "/data/records",
   checkInterval: 60 * 1000,
 };
+
+module.exports = Object.assign({}, defaultConfig, require("./config.local"));
