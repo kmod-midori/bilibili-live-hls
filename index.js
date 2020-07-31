@@ -21,7 +21,7 @@ async function main() {
     } catch (error) {
       logger.error("Check failed", error);
     }
-    setTimeout(fn, config.checkInterval + Math.round(Math.random() * 30));
+    setTimeout(fn, config.checkInterval + Math.round(Math.random() * 30) * 1000);
   };
   fn();
 }

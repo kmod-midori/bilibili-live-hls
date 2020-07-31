@@ -38,7 +38,7 @@ async function record(url) {
         logger.debug(`[${seqNumber}] ${segmentUrl}`);
         maxSeqNumber = seqNumber;
 
-        let destPath = pathJoin(dirPath, `${seqNumber}.ts`);
+        let destPath = pathJoin(dirPath, `${seqNumber}_${segment.duration}.ts`);
 
         downloadFile(segmentUrl, destPath).then(
           () => {
