@@ -4,7 +4,12 @@ const pathJoin = require("path").join;
 const mkdirp = require("mkdirp");
 const config = require("./config");
 
-const { axiosGet, sleep, downloadFile } = require("./common");
+const {
+  axiosGet,
+  sleep,
+  downloadFile,
+  downloadWithRetry,
+} = require("./common");
 const { getPlayUrl, isLive } = require("./api");
 
 async function loadAndParse(url) {
@@ -13,8 +18,38 @@ async function loadAndParse(url) {
   return playlist;
 }
 
+async function resolveAndWaitForPlaylist(url) {
+  let playlist;
+  let lastError;
+
+  for (let index = 0; index < 60; index++) {
+    try {
+      playlist = await loadAndParse(url);
+      break;
+    } catch (error) {
+      logger.debug("Failed to load playlist, retrying...", error);
+      lastError = error;
+      await sleep(2000);
+    }
+  }
+  if (!playlist) {
+    throw lastError;
+  }
+
+  if (playlist.segments) {
+    return url;
+  }
+  if (playlist.variants) {
+    let url = playlist.variants[0].uri;
+    logger.info("Switching playlist URL to " + url);
+    return url;
+  }
+  throw new Error("Got invalid playlist");
+}
+
 async function record(url) {
-  let lastPlaylist = null;
+  url = await resolveAndWaitForPlaylist(url);
+
   let maxSeqNumber = 0;
   let dirName = `${config.roomId}_${new Date()
     .toISOString()
@@ -40,14 +75,20 @@ async function record(url) {
 
         let destPath = pathJoin(dirPath, `${seqNumber}_${segment.duration}.ts`);
 
-        downloadFile(segmentUrl, destPath).then(
-          () => {
-            logger.debug(`Downloaded [${seqNumber}] => ${destPath}`);
-          },
-          (err) => {
-            logger.error(`Failed to download [${seqNumber}]`, err);
-          }
-        );
+        if (!config.noDownload) {
+          downloadWithRetry(segmentUrl, destPath).then(
+            () => {
+              logger.info(`Downloaded [${seqNumber}] => ${destPath}`);
+            },
+            (err) => {
+              logger.error(`Failed to download [${seqNumber}]`, err);
+            }
+          );
+        } else {
+          logger.info(
+            `Should download [${seqNumber}] => ${destPath}, but skipping`
+          );
+        }
       }
     }
 
@@ -75,6 +116,6 @@ exports.startRecord = async function (roomId) {
     } catch (error) {
       logger.error("Record loop failed", error);
     }
-    sleep(5 * 1000);
+    await sleep(5 * 1000);
   } while (await isLive(roomId));
 };

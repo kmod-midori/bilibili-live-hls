@@ -6,7 +6,7 @@ const config = require("./config");
 async function loop() {
   let live = await isLive(config.roomId);
   if (!live) {
-    logger.info("Not live");
+    logger.debug("Not live");
     return;
   }
 

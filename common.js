@@ -1,5 +1,6 @@
 const axios = require("axios");
 const fs = require("fs");
+const logger = require("./logger");
 
 const headers = {
   Referer: "https://live.bilibili.com/",
@@ -45,4 +46,30 @@ exports.downloadFile = function downloadFile(url, output) {
       });
     });
   });
+};
+
+exports.downloadWithRetry = async function (url, output, retry = 3) {
+  let backoff = 1000;
+  let lastError = null;
+
+  for (let count = 0; count < retry; count++) {
+    try {
+      await exports.downloadFile(url, output);
+      return;
+    } catch (error) {
+      logger.error(
+        `Failed to download ${url} to ${output}, retrying...`,
+        error
+      );
+      await exports.sleep(backoff);
+      backoff *= 2;
+      lastError = error;
+    }
+  }
+
+  logger.error(
+    `Failed to download ${url} to ${output} after ${retry} retries, skipping...`,
+    error
+  );
+  throw lastError;
 };
