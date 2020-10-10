@@ -1,5 +1,6 @@
 const restify = require("restify");
 const db = require("./db");
+const config = require("./config");
 
 const server = restify.createServer();
 server.use(restify.plugins.queryParser());
@@ -20,7 +21,6 @@ server.get(
     next();
   })
 );
-
 server.get(
   "/room/add",
   wrap(async function (req, res, next) {
@@ -32,7 +32,16 @@ server.get(
   })
 );
 
-server.listen(8080, function () {
+server.get(
+  "/record",
+  wrap(async function (req, res, next) {
+    let records = await db.recordsDao.findAll();
+    res.send(records);
+    next();
+  })
+);
+
+server.listen(config.apiPort, function () {
   console.log("%s listening at %s", server.name, server.url);
 });
 
