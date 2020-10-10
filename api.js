@@ -1,4 +1,5 @@
 const { axiosGet } = require("./common");
+const logger = require("./logger");
 
 exports.getPlayUrl = async function getPlayUrl(roomId) {
   let res = await axiosGet(
@@ -15,6 +16,11 @@ exports.getRoomInfo = async function getRoomInfo(roomId) {
 };
 
 exports.isLive = async function isLive(roomId) {
-  let res = await exports.getRoomInfo(roomId);
-  return res.live_status === 1;
+  try {
+    let res = await exports.getRoomInfo(roomId);
+    return res.live_status === 1;
+  } catch (err) {
+    logger.error("Failed to check live status", err);
+    return false;
+  }
 };

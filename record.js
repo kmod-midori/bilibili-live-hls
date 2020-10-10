@@ -3,14 +3,11 @@ const logger = require("./logger");
 const pathJoin = require("path").join;
 const mkdirp = require("mkdirp");
 const config = require("./config");
+const notify = require("./notify");
 
-const {
-  axiosGet,
-  sleep,
-  downloadFile,
-  downloadWithRetry,
-} = require("./common");
+const { axiosGet, sleep, downloadWithRetry } = require("./common");
 const { getPlayUrl, isLive } = require("./api");
+const db = require("./db");
 
 async function loadAndParse(url) {
   let res = await axiosGet(url);
@@ -18,44 +15,32 @@ async function loadAndParse(url) {
   return playlist;
 }
 
-async function resolveAndWaitForPlaylist(url) {
-  let playlist;
-  let lastError;
-
-  for (let index = 0; index < 60; index++) {
-    try {
-      playlist = await loadAndParse(url);
-      break;
-    } catch (error) {
-      logger.debug("Failed to load playlist, retrying...", error);
-      lastError = error;
-      await sleep(2000);
-    }
-  }
-  if (!playlist) {
-    throw lastError;
-  }
+async function resolvePlaylist(url) {
+  let playlist = await loadAndParse(url);
 
   if (playlist.segments) {
     return url;
   }
+
   if (playlist.variants) {
     let url = playlist.variants[0].uri;
     logger.info("Switching playlist URL to " + url);
-    return url;
+    return resolvePlaylist(url);
   }
+
   throw new Error("Got invalid playlist");
 }
 
-async function record(url) {
-  url = await resolveAndWaitForPlaylist(url);
+async function record(room, recordDoc, url) {
+  let lastSeqNumber = 0;
+  let dirName = `${room.roomId}_${new Date().toISOString().replace(/:/g, "_")}`;
 
-  let maxSeqNumber = 0;
-  let dirName = `${config.roomId}_${new Date()
-    .toISOString()
-    .replace(/:/g, "_")}`;
-  let dirPath = pathJoin(config.destDir, dirName);
+  let dirPath = pathJoin(config.dataDir, "records", dirName);
   await mkdirp(dirPath);
+
+  await db.recordsDao.update(recordDoc._id, {
+    dirName: dirName,
+  });
 
   while (true) {
     let playlist = await loadAndParse(url);
@@ -64,14 +49,14 @@ async function record(url) {
     for (const segment of playlist.segments) {
       const seqNumber = segment.mediaSequenceNumber;
 
-      if (seqNumber > maxSeqNumber) {
-        if (seqNumber - maxSeqNumber > 1) {
-          logger.warn(`Skipped ${seqNumber - maxSeqNumber} segments!`);
+      if (seqNumber > lastSeqNumber) {
+        if (seqNumber - lastSeqNumber > 1) {
+          logger.warn(`Skipped ${seqNumber - lastSeqNumber} segments!`);
         }
 
         let segmentUrl = `https://${host}${segment.uri}`;
         logger.debug(`[${seqNumber}] ${segmentUrl}`);
-        maxSeqNumber = seqNumber;
+        lastSeqNumber = seqNumber;
 
         let destPath = pathJoin(dirPath, `${seqNumber}_${segment.duration}.ts`);
 
@@ -101,21 +86,47 @@ async function record(url) {
   }
 }
 
-async function recordLoop(roomId) {
-  let url = await getPlayUrl(roomId);
-  logger.info("Playlist URL: " + url);
+async function recordLoop(room) {
+  let url = await resolvePlaylist(await getPlayUrl(room.roomId));
 
-  await record(url);
+  let recordDoc = {
+    roomId: room.roomId,
+    title: room.title,
+    startTime: new Date(),
+    playlistUrl: url,
+  };
+  recordDoc = await db.recordsDao.create(recordDoc);
+  await db.roomsDao.update(room.roomId, {
+    recording: true,
+  });
+  notify.sendStart(room);
+
+  try {
+    await record(room, recordDoc, url);
+    notify.sendEnd(room);
+  } catch (error) {
+    await db.recordsDao.update(recordDoc._id, {
+      error: error.stack || error.toString(),
+    });
+    notify.sendError(room, error);
+    throw error;
+  } finally {
+    await db.recordsDao.update(recordDoc._id, {
+      endTime: new Date(),
+    });
+    await db.roomsDao.update(room.roomId, {
+      recording: false,
+    });
+  }
 }
 
-exports.startRecord = async function (roomId) {
+exports.startRecord = async function (room) {
   do {
     try {
-      await recordLoop(roomId);
-      logger.info("Record loop exited w/o errors");
+      await recordLoop(room);
     } catch (error) {
       logger.error("Record loop failed", error);
     }
     await sleep(5 * 1000);
-  } while (await isLive(roomId));
+  } while (await isLive(room.roomId));
 };

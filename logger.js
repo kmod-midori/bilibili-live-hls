@@ -1,5 +1,5 @@
 const { createLogger, format, transports } = require("winston");
-const { combine, timestamp, label, prettyPrint } = format;
+const { combine, timestamp } = format;
 
 const logger = createLogger({
   level: "debug",

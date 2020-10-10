@@ -71,5 +71,8 @@ exports.downloadWithRetry = async function (url, output, retry = 3) {
     `Failed to download ${url} to ${output} after ${retry} retries, skipping...`,
     error
   );
+  fs.unlink(output, function (err) {
+    logger.warn(`Deleted ${output}`);
+  });
   throw lastError;
 };

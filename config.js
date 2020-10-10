@@ -1,5 +1,7 @@
+const pathJoin = require("path").join;
+
 const defaultConfig = {
-  destDir: __dirname + "/data/records",
+  dataDir: pathJoin(__dirname, "data"),
   checkInterval: 60 * 1000,
   noDownload: false,
 };
