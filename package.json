@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "hls-parser": "^0.6.1",
     "mkdirp": "^1.0.4",
     "nedb-promises": "^4.1.0",
